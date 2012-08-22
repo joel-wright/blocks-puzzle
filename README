@@ -1,0 +1,13 @@
+A tiny Haskell program to solve a wooden block puzzle I once came across.
+
+The puzzle consists of 10 wooden blocks, each one with 5 elements on one special surface.
+
+The elements are either a hole, a pin or a blank.
+
+The idea is to arrange the blocks with their special surfaces facing each other and the top layer at 90 degrees to the bottom layer, such that we always have:
+
+Blank <-> Blank
+Hole  <-> Pin
+Pin   <-> Hole
+
+The specification of the blocks is included in the source.
