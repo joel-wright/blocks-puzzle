@@ -10,70 +10,58 @@ data BlockE = Hole | Pin | Blank
 
 type Block = [BlockE]
 
-b1,b1r,b2,b2r,b3,b3r,b4,b4r,b5,b5r :: Block
-b1 = [Hole,Hole,Blank,Blank,Hole]
-b1r = reverse b1
-b2 = [Pin,Hole,Pin,Blank,Blank]
-b2r = reverse b2
-b3 = [Pin,Blank,Hole,Blank,Hole]
-b3r = reverse b3
-b4 = [Hole,Pin,Hole,Blank,Blank]
-b4r = reverse b4
-b5 = [Hole,Pin,Blank,Hole,Blank]
-b5r = reverse b5
-
-b6,b6r,b7,b7r,b8,b8r,b9,b9r,b10,b10r :: Block
-b6 = [Pin,Blank,Pin,Blank,Blank]
-b6r = reverse b6
-b7 = [Blank,Pin,Blank,Blank,Pin]
-b7r = reverse b7
-b8 = [Pin,Blank,Hole,Blank,Blank]
-b8r = reverse b8
-b9 = [Blank,Pin,Blank,Hole,Blank]
-b9r = reverse b9
+b1,b2,b3,b4,b5,b6,b7,b8,b9,b10 :: Block
+b1 =  [Hole,Hole,Blank,Blank,Hole]
+b2 =  [Pin,Hole,Pin,Blank,Blank]
+b3 =  [Pin,Blank,Hole,Blank,Hole]
+b4 =  [Hole,Pin,Hole,Blank,Blank]
+b5 =  [Hole,Pin,Blank,Hole,Blank]
+b6 =  [Pin,Blank,Pin,Blank,Blank]
+b7 =  [Blank,Pin,Blank,Blank,Pin]
+b8 =  [Pin,Blank,Hole,Blank,Blank]
+b9 =  [Blank,Pin,Blank,Hole,Blank]
 b10 = [Blank,Pin,Blank,Pin,Hole]
-b10r = reverse b10
 
 type Blocks = [Block]
-
 type Solution = ([Block],[Block])
 
-blocks :: [(Block,Block)]
-blocks = [ (b1,b1r),
-           (b2,b2r),
-           (b3,b3r),
-           (b4,b4r),
-           (b5,b5r),
-           (b6,b6r),
-           (b7,b7r),
-           (b8,b8r),
-           (b9,b9r),
-           (b10,b10r) ]
+blocks :: [Block]
+blocks = [b1,b2,b3,b4,b5,b6,b7,b8,b9,b10]
 
 -- Main just shows the first solution from the solution list
--- main = putStrLn $ show $ head $ (construct blocks)
-
 main :: IO()
-main = do
-            putStrLn "Printing Solutions:\n"
-            mainAll' 1 (construct blocks)
+main = mainAll' 1 (take 1 $ construct blocks)
 
 mainAll' :: Int -> [Solution] -> IO()
-mainAll' n []     = putStrLn "\nAll Solutions Printed"
+mainAll' n []     = return ()
 mainAll' n (x:xs) = do
-                      putStrLn $ "Solution " ++ (show n) ++ ": " ++ (show x)
+                      putStrLn $ "Solution " ++ (show n) ++ ":\n\n" ++ (showSolution x)
                       mainAll' (n+1) xs
 
--- We now construct our solution by fusing the generator and the tester
--- into a single smart constructor of the solution list
 
+-- A quick function to convince myself that the multiple solutions 
+-- produced are mirrors/rotations of a single solution.
+removeMirrors :: Solution -> [Solution] -> [Solution]
+removeMirrors s ss = filter (\s' -> not(elem s' mss)) ss
+    where
+        bsl = fst(s)
+        bsr = snd(s)
+        mss = [((reverse (map reverse bsr)),reverse((map reverse bsl))),
+               ((reverse (map reverse bsl)),reverse((map reverse bsr))),
+               (reverse(bsl),(map reverse bsr)),
+               ((map reverse bsl),reverse(bsr)),
+               (reverse(bsr),(map reverse bsl)),
+               ((map reverse bsr),reverse(bsl)),
+               (bsr,bsl)]
+
+-- We now construct our solution by generating only valid solutions
+--
 -- construct takes the block list, and a pair accumulator into which we're
 -- gonna put our solution piece by piece.
-
-construct :: [(Block,Block)] -> [Solution]
+construct :: [Block] -> [Solution]
 construct bs = construct' (bs,([],[]))
 
--- we represent a solution as a pair of lists of blocks,
+-- we now represent a solution as a pair of lists of blocks,
 -- the first element for the vertical blocks and the second for the
 -- horizontal blocks.
 --
@@ -83,36 +71,32 @@ construct bs = construct' (bs,([],[]))
 --
 -- we take the block from the block list, and add it to our solution
 -- only if it is a valid move (see later).
--- the two list comprehensions are there because our block list
--- is saved as a block with its reverse.
-
-construct' :: ([(Block,Block)],(Blocks,Blocks)) -> [Solution]
+construct' :: (Blocks,(Blocks,Blocks)) -> [Solution]
 construct' ([],(v,h)) = [(v,h)]
-construct' (bs,(v,h)) = concat $ map construct' $ nub ([(remove b bs,(h,v++[b])) | (b,b') <- bs , valid (v++[b],h)] 
-                                                        ++
-                                                       [(remove b' bs,(h,v++[b'])) | (b,b') <- bs , valid (v++[b'],h)])
+construct' (bs,(v,h)) = concat $ map construct' $
+                            [(delete b bs,(h,v++[b])) | b <- bs, valid (v++[b],h)] 
+                             ++
+                            [(delete b bs,(h,v++[(reverse b)])) | b <- bs, valid (v++[(reverse b)],h)]
 
 -- valid only does the work that hasn't been done in a previous test
---
+-- 
 -- i.e. when we try and add a block to a potential solution we know
 -- due to the way the constructor works, that we need only test those
--- parts which have recently been added (i.e. where the last added
--- block overlaps with those already there).
+-- parts which have recently been added (where the last added
+-- block overlaps with those already present).
 
 -- it should be noted that the valid test always looks at the first
 -- block list because we swap the elements of the potential solution
 -- every time we add a block (this allows us to have only one
 -- construct' and valid function, rather than a contruct and valid
 -- for adding vertical blocks, and one for horizontal blocks.
-
 valid :: (Blocks,Blocks) -> Bool
 valid (bs,[])  = True
 valid (bs,bs') = allBlank $ map addP $ zip (last bs) (map (!!i) bs')
                      where
                          i = (length bs) - 1
 
--- everything else is pretty obvious.
-
+-- everything else is obvious.
 allBlank :: [Bool] -> Bool
 allBlank = all (==True)
 
@@ -122,9 +106,11 @@ addP (Pin,Hole) = True
 addP (Hole,Pin) = True
 addP (_,_) = False
 
-remove :: Block -> [(Block,Block)] -> [(Block,Block)]
-remove r ((b,b'):bs)
-    | r == b    = bs
-    | r == b'   = bs
-    | otherwise = (b,b') : (remove r bs)
+showSolution :: Solution -> String
+showSolution (blks1,blks2) = "Layer 1:\n\n" ++ (showBlocks blks1) ++ "\n" ++
+                             "Layer 2:\n\n" ++ (showBlocks blks2)
+
+showBlocks :: Blocks -> String
+showBlocks [] = ""
+showBlocks (b:bs) = (show b) ++ "\n" ++ showBlocks bs
 
